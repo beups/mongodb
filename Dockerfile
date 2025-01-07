@@ -1,14 +1,26 @@
-# Install a more up to date mongodb than what is included in the default ubuntu repositories.
+# Utiliser une version spécifique d'Ubuntu pour éviter les problèmes liés à "latest"
+FROM ubuntu:20.04
 
-FROM ubuntu
-MAINTAINER Kimbro Staken
+# Ajouter une étiquette pour remplacer le champ obsolète MAINTAINER
+LABEL maintainer="Kimbro Staken"
 
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10
-RUN echo "deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen" | tee -a /etc/apt/sources.list.d/10gen.list
-RUN apt-get update
-RUN apt-get -y install apt-utils
-RUN apt-get -y install mongodb-10gen
+# Mettre à jour le système et installer les dépendances nécessaires
+RUN apt-get update && apt-get install -y \
+    gnupg curl apt-utils ca-certificates --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
-#RUN echo "" >> /etc/mongodb.conf
+# Ajouter la clé GPG pour le dépôt MongoDB (remplace l'ancien apt-key)
+RUN curl -fsSL https://www.mongodb.org/static/pgp/server-4.4.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-archive-keyring.gpg
 
-CMD ["/usr/bin/mongod", "--config", "/etc/mongodb.conf"] 
+# Ajouter le dépôt MongoDB
+RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/mongodb-archive-keyring.gpg] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.4 multiverse" \
+    | tee /etc/apt/sources.list.d/mongodb-org-4.4.list
+
+# Mettre à jour la liste des paquets et installer MongoDB
+RUN apt-get update && apt-get install -y mongodb-org && rm -rf /var/lib/apt/lists/*
+
+# Exposer le port MongoDB
+EXPOSE 27017
+
+# Commande par défaut pour démarrer MongoDB
+CMD ["/usr/bin/mongod", "--config", "/etc/mongod.conf"]
